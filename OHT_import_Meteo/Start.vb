@@ -1,16 +1,6 @@
-﻿
-
-
-Imports System.Net
-Imports System.IO
-Imports System.Data
-Imports System.Text
-Imports Microsoft.Office.Interop
-Imports Microsoft.Office.Interop.Excel
-Imports System.Threading
+﻿Imports System.IO
 Imports System.Data.OracleClient
 Imports DataTable = System.Data.DataTable
-Imports System.Data.OleDb
 
 'Imports System.Data.OleDb
 'Imports System.Data.Sql
@@ -34,7 +24,7 @@ Module OHT
 
 
 
-    Dim FTP_import_Cumulus As New OHT_import_Meteo.FTP_import_Cumulus
+
     Dim Tools As New OHT_import_Meteo.Tools_OHT
 
     Public katalog_pliku_log As String
@@ -49,23 +39,18 @@ Module OHT
     '2 - poziom serwisowy 
     '
     Public tryb_testowy As Boolean = False
-
+    Public plik_do_importu As String = ""
+    Public zrodlo_meteo As String = ""
+    Public nazwa_pliku_log As String
 
     Sub Main()
 
 
 
         Dim StatusPodczytu As Boolean = False
-
-        'spr sieci
-        DoLogu("Start")
-        DoLogu(Tools.Check_internet)
-
-        DoLogu("Ilość argumentów wywołania aplikacji:" & My.Application.CommandLineArgs.Count, 1)
+        Dim arg_wartosc As String
 
 
-        'Dim aaa As String
-        'Dim k As Integer
 
 
         For Each arg As String In My.Application.CommandLineArgs
@@ -75,39 +60,75 @@ Module OHT
                 DoLogu("Argument 'StatusPodczytu':" & arg.ToString, 1)
             End If
 
-            'DoLogu(arg.Length)
-            'For k = 0 To arg.Length - 1
-            '	DoLogu("k" & k & "   " & arg.Chars(k).ToString)
-            'Next
 
-            If (arg.Length = 3) Then
-                If (arg.Chars(1).ToString = "p") Then
-                    'Dim MyChar() As Char = {"-", "p"}
-                    'Dim str As String = arg.TrimStart(MyChar)
-                    If CInt(arg.Chars(2).ToString) < 3 Then
-                        status_logu = CInt(arg.Chars(2).ToString)
+
+
+            If arg.Length > 2 Then
+
+                'do usu
+                Dim aasasda As String
+                aasasda = arg.Substring(3, 1)
+
+
+
+                If (arg.Substring(1, 2) = "p:") Then
+
+                    If CInt(arg.Chars(3).ToString) < 3 Then
+                        status_logu = CInt(arg.Substring(3, 1))
                         DoLogu("Poziom logu: " & status_logu.ToString, 1)
-                        DoLogu("Argument 'Poziom logu':" & arg.ToString, 1)
                     End If
                 End If
-            End If
 
+
+                If (arg.Substring(1, 2).ToLower = "f:") Then
+                    arg_wartosc = arg.Substring(3, arg.Length - 3)
+                    plik_do_importu = arg_wartosc
+                End If
+
+                If (arg.Substring(1, 2).ToLower = "s:") Then
+                    arg_wartosc = arg.Substring(3, arg.Length - 3)
+                    zrodlo_meteo = arg_wartosc
+                End If
+
+            End If
         Next
 
+
+        Dim proces As Process
+        proces = System.Diagnostics.Process.GetCurrentProcess
+
+
+        If File.Exists(plik_do_importu) Then
+            Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
+            nazwa_pliku_log = plik.Name
+        End If
+
+        nazwa_pliku_log = zrodlo_meteo & "_" & proces.Id.ToString & "_" & nazwa_pliku_log
+
+        DoLogu("Start")
+        DoLogu(Tools.Check_internet)
+        DoLogu("Ilość argumentów wywołania aplikacji:" & My.Application.CommandLineArgs.Count, 1)
+        For Each arg As String In My.Application.CommandLineArgs
+            DoLogu(arg.ToString)
+        Next
 
 
         If StatusPodczytu = True Then
 
-            DoLogu("Start pobierania danych z FTP")
-            FTP_import_Cumulus.PobierzDanezFTP(sciezka_zrodlo)
-            DoLogu("Koniec pobierania danych")
 
-            DoLogu("Zapis_danych_na_baze.")
 
-            'zapis danych na bazę
-            Zapis_danych_na_baze()
-            DoLogu("Zakończono import danych.")
 
+            If File.Exists(plik_do_importu) Then
+                Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
+
+
+
+                DoLogu("Zapis_danych_na_baze.")
+                'zapis danych na bazę
+                Zapis_danych_na_baze(plik, zrodlo_meteo)
+                DoLogu("Zakończono import danych.")
+
+            End If
 
         Else
 
@@ -127,7 +148,7 @@ Module OHT
 
 
     Private Sub DoLogu(str As String, Optional poziom As Integer = 1)
-        Tools.WriteToFile2(str, poziom)
+        Tools.WriteToFile3(str, nazwa_pliku_log, poziom)
 
     End Sub
 
@@ -138,7 +159,7 @@ Module OHT
 
 
 
-    Sub Zapis_danych_na_baze()
+    Sub Zapis_danych_na_baze(singleFile As IO.FileInfo, zrodlo_meteo As String)
         Dim data_s As String
         Dim wartosc As Double
         Dim wartosc_s As String
@@ -155,173 +176,171 @@ Module OHT
         Dim dt As DataTable = Nothing
         Dim nazwaPliku As String = ""
 
-        Dim Directory As New IO.DirectoryInfo(sciezka_zrodlo)
-        Dim allFiles As IO.FileInfo() = Directory.GetFiles("*_Cumulus*.csv")
-        Dim singleFile As IO.FileInfo
+        'Dim Directory As New IO.DirectoryInfo(sciezka_zrodlo)
+        'Dim allFiles As IO.FileInfo() = Directory.GetFiles("*_Cumulus*.csv")
+        ' Dim singleFile As IO.FileInfo
 
         'petla po wszystkich plikach
-        For Each singleFile In allFiles
+        'For Each singleFile In allFiles
 
-            licznik = licznik + 1
+        licznik = licznik + 1
 
-            Try
-                conn.Open()
-            Catch ex As OracleException ' catches only Oracle errors
-                Select Case ex.ErrorCode
-                    Case 1
-                        DoLogu("Error attempting to insert duplicate data.")
-                    Case 12560
-                        DoLogu("Baza danych jest niedostępna !")
-                    Case Else
-                        DoLogu("Database error: " + ex.Message.ToString())
-                End Select
-            Catch ex As Exception
-                DoLogu(ex.Message.ToString())
-            Finally
-                DoLogu("Połączono z bazą:" & baza)
-            End Try
+        Try
+            conn.Open()
+        Catch ex As OracleException ' catches only Oracle errors
+            Select Case ex.ErrorCode
+                Case 1
+                    DoLogu("Error attempting to insert duplicate data.")
+                Case 12560
+                    DoLogu("Baza danych jest niedostępna !")
+                Case Else
+                    DoLogu("Database error: " + ex.Message.ToString())
+            End Select
+        Catch ex As Exception
+            DoLogu(ex.Message.ToString())
+        Finally
+            DoLogu("Połączono z bazą:" & baza)
+        End Try
 
 
-            Try
-                nazwaPliku = singleFile.Name
-
-                DoLogu("  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ")
-                DoLogu("Parsowanie pliku " & licznik & "\" & allFiles.Length + 1 & " - " & nazwaPliku.ToString)
-                dt = FileToTable(sciezka_zrodlo & nazwaPliku, ";", False)
-
-                If Spr_czy_juz_zapisany(conn, nazwaPliku) = False And czy_zapisac_wszystkie_pliki = False Then
+        Try
 
 
 
-                    typPrognozy = dt.Rows(0).Item(0).ToString
-                    nazwaMeteo = Mid(typPrognozy, 3, Len(typPrognozy))
+            sciezka_zrodlo = singleFile.Directory.FullName
 
-                    If nazwaMeteo = "Cumulus_prog_wiatr_sila" _
-                        Or nazwaMeteo = "Cumulus_prog_wiatr_kierunek" _
-                        Or nazwaMeteo = "Cumulus_prog_slonce_strumien" _
-                        Or nazwaMeteo = "Cumulus_prog_slonce_zachm_calk" _
-                        Or nazwaMeteo = "Cumulus_prog_slonce_zachm_konw" _
-                        Or nazwaMeteo = "Cumulus_prog_slonce_zachm_nis" _
-                        Or nazwaMeteo = "Cumulus_prog_slonce_zachm_sred" _
-                        Or nazwaMeteo = "Cumulus_prog_slonce_zachm_wys" _
-                        Or nazwaMeteo = "Cumulus_prog_wiatr_gestosc" _
-                        Then
+            nazwaPliku = singleFile.Name
+
+            DoLogu("  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ")
+            DoLogu("Parsowanie pliku " & nazwaPliku.ToString)
+            dt = FileToTable(sciezka_zrodlo & "\" & nazwaPliku, ";", False)
+
+            If Spr_czy_juz_zapisany(conn, nazwaPliku) = False And czy_zapisac_wszystkie_pliki = False Then
 
 
-                        Ostatni_W = dt.Rows.Count
-                        Ostatni_K = dt.Columns.Count
 
-                        wersja = typPrognozy.Substring(0, 1)
-                        model = typPrognozy.Substring(2, 7) 'Cumulus
-                        dData = CDate(dt.Rows(1).Item(0))
+                typPrognozy = dt.Rows(0).Item(0).ToString
+                nazwaMeteo = Mid(typPrognozy, 3, Len(typPrognozy))
 
-                        dGodzina = (dt.Rows(0).Item(1))
-
-                        Dim nazwaProfilu_N As String
-                        Dim nazwaProfilu_N1 As String
-                        Dim nazwaProfilu_N2 As String
-                        Dim nazwaLokalizacji As String = ""
-                        Dim ID_profil_N As Long
-                        Dim ID_profil_N1 As Long
-                        Dim ID_profil_N2 As Long
-
-                        'petla po wierszach lokalizacji
-                        For w = 2 To Ostatni_W - 1
-
-                            '*************************************************************************************************************************
-                            'Do usu
-                            If w = 3 And tryb_testowy = True Then
-                                w = Ostatni_W - 1
-                            End If
+                If nazwaMeteo.ToLower.Contains("cumulus") _
+                    Or nazwaMeteo.ToLower.Contains("conwx") Then
 
 
-                            nazwaLokalizacji = (dt.Rows(w).Item(0))
 
-                            nazwaProfilu_N = nazwaLokalizacji & "_" & nazwaMeteo & "_N"
-                            nazwaProfilu_N1 = nazwaLokalizacji & "_" & nazwaMeteo & "_N1"
-                            nazwaProfilu_N2 = nazwaLokalizacji & "_" & nazwaMeteo & "_N2"
+                    Ostatni_W = dt.Rows.Count
+                    Ostatni_K = dt.Columns.Count
 
-                            ID_profil_N = Pobierz_ID_z_Name(conn, nazwaProfilu_N)
-                            If ID_profil_N = 0 Then
-                                DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N)
-                            End If
+                    wersja = typPrognozy.Substring(0, 1)
+                    model = typPrognozy.Substring(2, 7) 'Cumulus
+                    dData = CDate(dt.Rows(1).Item(0))
 
-                            ID_profil_N1 = Pobierz_ID_z_Name(conn, nazwaProfilu_N1)
-                            If ID_profil_N1 = 0 Then
-                                DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N1)
-                            End If
+                    dGodzina = (dt.Rows(0).Item(1))
 
-                            ID_profil_N2 = Pobierz_ID_z_Name(conn, nazwaProfilu_N2)
-                            If ID_profil_N2 = 0 Then
-                                DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N2)
-                            End If
+                    Dim nazwaProfilu_N As String
+                    Dim nazwaProfilu_N1 As String
+                    Dim nazwaProfilu_N2 As String
+                    Dim nazwaLokalizacji As String = ""
+                    Dim ID_profil_N As Long
+                    Dim ID_profil_N1 As Long
+                    Dim ID_profil_N2 As Long
+
+                    'petla po wierszach lokalizacji
+                    For w = 2 To Ostatni_W - 1
+
+                        '*************************************************************************************************************************
+                        'Do usu
+                        If w = 3 And tryb_testowy = True Then
+                            w = Ostatni_W - 1
+                        End If
 
 
-                            'petla po kolumnach
-                            For k = 1 To Ostatni_K - 2
-                                dData_temp = dData.AddHours(dGodzina.Hour + k - 1)
+                        nazwaLokalizacji = (dt.Rows(w).Item(0))
 
-                                wartosc_s = (dt.Rows(w).Item(k)).ToString
-                                wartosc_s = wartosc_s.Replace(".", ",")
-                                wartosc = CDbl(wartosc_s)
-                                wartosc /= 4
-                                wartosc_s = wartosc.ToString
-                                wartosc_s = wartosc_s.Replace(",", ".")
+                        nazwaProfilu_N = nazwaLokalizacji & "_" & nazwaMeteo & "_N"
+                        nazwaProfilu_N1 = nazwaLokalizacji & "_" & nazwaMeteo & "_N1"
+                        nazwaProfilu_N2 = nazwaLokalizacji & "_" & nazwaMeteo & "_N2"
 
-                                'zapis 15'
-                                For g = 1 To 4
+                        ID_profil_N = Pobierz_ID_z_Name(conn, nazwaProfilu_N)
+                        If ID_profil_N = 0 Then
+                            DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N)
+                        End If
 
-                                    data_s = "TO_DATE('" & Format(dData_temp, "yyyy-MM-dd HH:mm:ss") & "', 'YYYY-MM-DD HH24:MI:SS')"
+                        ID_profil_N1 = Pobierz_ID_z_Name(conn, nazwaProfilu_N1)
+                        If ID_profil_N1 = 0 Then
+                            DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N1)
+                        End If
 
-                                    'zapis na profil N
-                                    If ID_profil_N > 0 Then
-                                        InsertRowEnergy15(conn, ID_profil_N, data_s, wartosc_s)
+                        ID_profil_N2 = Pobierz_ID_z_Name(conn, nazwaProfilu_N2)
+                        If ID_profil_N2 = 0 Then
+                            DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N2)
+                        End If
+
+
+                        'petla po kolumnach
+                        For k = 1 To Ostatni_K - 2
+                            dData_temp = dData.AddHours(dGodzina.Hour + k - 1)
+
+                            wartosc_s = (dt.Rows(w).Item(k)).ToString
+                            wartosc_s = wartosc_s.Replace(".", ",")
+                            wartosc = CDbl(wartosc_s)
+                            wartosc /= 4
+                            wartosc_s = wartosc.ToString
+                            wartosc_s = wartosc_s.Replace(",", ".")
+
+                            'zapis 15'
+                            For g = 1 To 4
+
+                                data_s = "TO_DATE('" & Format(dData_temp, "yyyy-MM-dd HH:mm:ss") & "', 'YYYY-MM-DD HH24:MI:SS')"
+
+                                'zapis na profil N
+                                If ID_profil_N > 0 Then
+                                    InsertRowEnergy15(conn, ID_profil_N, data_s, wartosc_s)
+                                End If
+
+                                'zapis na profil N1
+                                If Format(dData.AddDays(1), "yyyyMMdd") = Format(dData_temp, "yyyyMMdd") Then
+                                    If ID_profil_N1 > 0 Then
+                                        InsertRowEnergy15(conn, ID_profil_N1, data_s, wartosc_s)
                                     End If
+                                End If
 
-                                    'zapis na profil N1
-                                    If Format(dData.AddDays(1), "yyyyMMdd") = Format(dData_temp, "yyyyMMdd") Then
-                                        If ID_profil_N1 > 0 Then
-                                            InsertRowEnergy15(conn, ID_profil_N1, data_s, wartosc_s)
-                                        End If
+                                'zapis na profil N2
+                                If Format(dData.AddDays(2), "yyyyMMdd") = Format(dData_temp, "yyyyMMdd") Then
+                                    If ID_profil_N2 > 0 Then
+                                        InsertRowEnergy15(conn, ID_profil_N2, data_s, wartosc_s)
                                     End If
+                                End If
 
-                                    'zapis na profil N2
-                                    If Format(dData.AddDays(2), "yyyyMMdd") = Format(dData_temp, "yyyyMMdd") Then
-                                        If ID_profil_N2 > 0 Then
-                                            InsertRowEnergy15(conn, ID_profil_N2, data_s, wartosc_s)
-                                        End If
-                                    End If
-
-                                    dData_temp = dData_temp.AddMinutes(15)
-                                Next
-
+                                dData_temp = dData_temp.AddMinutes(15)
                             Next
-                            DoLogu("Zapisano dane dla lokalizacji: " & nazwaLokalizacji)
 
                         Next
+                        DoLogu("Zapisano dane dla lokalizacji: " & nazwaLokalizacji)
 
-                    End If
+                    Next
 
-
-
-                    'dodanie logu do bazy
-                    InsertRowHarmonogram_log(conn, "Import_Cumulus", nazwaPliku.ToString)
-
-                    conn.Close()
-                    dt.Reset()
-                Else
-                    DoLogu("Plik pominięty. Został już wcześniej zapisany.")
                 End If
 
 
-                Przenies_plik(singleFile)
 
+                'dodanie logu do bazy
+                InsertRowHarmonogram_log(conn, "Import_" & zrodlo_meteo, nazwaPliku.ToString)
 
-            Catch err As Exception
                 conn.Close()
-                DoLogu("Błąd parsowania pliku: .... Błąd numer:" & err.ToString)
-            End Try
-        Next
+                dt.Reset()
+            Else
+                DoLogu("Plik pominięty. Został już wcześniej zapisany.")
+            End If
+
+
+            Przenies_plik(singleFile)
+
+
+        Catch err As Exception
+            conn.Close()
+            DoLogu("Błąd parsowania pliku: .... Błąd numer:" & err.ToString)
+        End Try
+        'Next
 
         conn.Close()
 
@@ -419,7 +438,7 @@ Module OHT
 
             End Using
         Catch err As Exception
-            DoLogu("Błąd pobierania ID formuły z nazwy:" & Name & ". Błąd numer:" & err.ToString)
+            DoLogu("Błąd pobierania ID formuły z nazwy:" & nazwa_pliku & ". Błąd numer:" & err.ToString)
             Return 0
         End Try
         Return rezult

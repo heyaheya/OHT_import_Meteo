@@ -56,6 +56,22 @@ Namespace OHT_import_Meteo
 
         End Sub
 
+        Public Sub WriteToFile3(text As String, nazwa As String, Optional poziom As Integer = 1)
+            If OHT.status_logu >= poziom Then
+                Dim path As String = "C:\temp\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_import_" & nazwa & "_log.txt"
+                text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss").ToString & " " & text
+                Using writer As New StreamWriter(path, True)
+                    writer.WriteLine(text)
+                    writer.Close()
+                End Using
+
+
+            End If
+
+
+
+        End Sub
+
         'uruchamianie palikacji i wysyłanie znaków klawiszy
         Sub wyslij()
             Dim ProcID As Integer
