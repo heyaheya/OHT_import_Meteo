@@ -18,11 +18,14 @@ Imports DataTable = System.Data.DataTable
 '************************************************************************************************************************************************
 
 
+
 Module OHT
 
+    'Public Class Form1
 
-
-
+    Private Declare Auto Function ShowWindow Lib "user32.dll" (ByVal hWnd As IntPtr, ByVal nCmdShow As Integer) As Boolean
+    Private Declare Auto Function GetConsoleWindow Lib "kernel32.dll" () As IntPtr
+    Private Const SW_HIDE As Integer = 0
 
 
     Dim Tools As New OHT_import_Meteo.Tools_OHT
@@ -54,28 +57,17 @@ Module OHT
 
 
         For Each arg As String In My.Application.CommandLineArgs
-            DoLogu("Argumenty wywołania aplikacji:" & arg.ToString, 1)
             If arg.Trim("-") = "v" Then
                 StatusPodczytu = True
-                DoLogu("Argument 'StatusPodczytu':" & arg.ToString, 1)
             End If
 
 
-
-
             If arg.Length > 2 Then
-
-                'do usu
-                Dim aasasda As String
-                aasasda = arg.Substring(3, 1)
-
-
 
                 If (arg.Substring(1, 2) = "p:") Then
 
                     If CInt(arg.Chars(3).ToString) < 3 Then
                         status_logu = CInt(arg.Substring(3, 1))
-                        DoLogu("Poziom logu: " & status_logu.ToString, 1)
                     End If
                 End If
 
@@ -112,11 +104,14 @@ Module OHT
             DoLogu(arg.ToString)
         Next
 
+        Const SW_HIDE As Integer = &H0
+
 
         If StatusPodczytu = True Then
 
-
-
+            Dim hWndConsole As IntPtr
+            hWndConsole = GetConsoleWindow()
+            ShowWindow(hWndConsole, SW_HIDE)
 
             If File.Exists(plik_do_importu) Then
                 Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
@@ -214,6 +209,8 @@ Module OHT
             DoLogu("  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ")
             DoLogu("Parsowanie pliku " & nazwaPliku.ToString)
             dt = FileToTable(sciezka_zrodlo & "\" & nazwaPliku, ";", False)
+
+
 
             If Spr_czy_juz_zapisany(conn, nazwaPliku) = False And czy_zapisac_wszystkie_pliki = False Then
 
@@ -419,7 +416,7 @@ Module OHT
         Dim id As Long
         Try
             Using cmd As OracleCommand = New OracleCommand()
-                Dim sql As String = "select id from OZEN.HARMONOGRAM_LOG where lower (INFO) = lower ('" & nazwa_pliku & ".csv') and lower (ZADANIE) = lower ('Import_Cumulus') "
+                Dim sql As String = "select id from OZEN.HARMONOGRAM_LOG where lower (INFO) = lower ('" & nazwa_pliku & "') and lower (ZADANIE) = lower ('Import_Cumulus') "
                 cmd.Connection = cn
                 'cmd.Parameters.Add(New OracleParameter("var1", id))
                 'cmd.Parameters.Add(New OracleParameter("var2", data))
@@ -532,3 +529,4 @@ Module OHT
 
 
 End Module
+'End Class
