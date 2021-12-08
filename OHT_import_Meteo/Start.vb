@@ -1,6 +1,7 @@
 ﻿Imports System.IO
 Imports System.Data.OracleClient
 Imports DataTable = System.Data.DataTable
+Imports System.Configuration
 
 'Imports System.Data.OleDb
 'Imports System.Data.Sql
@@ -31,10 +32,10 @@ Module OHT
     Dim Tools As New OHT_import_Meteo.Tools_OHT
 
     Public katalog_pliku_log As String
-    Public baza As String = "ERGH_TEST"    'Dim baza As String = "ERGH"
+    Public baza As String = "ERGH_NEW"    'Dim baza As String = "ERGH"
     Public conn As New OracleConnection(Tools.Get_ConnectionString(baza))
 
-    Public sciezka_zrodlo As String = "Y:\OHT\Dana Pomiarowe\Cumulus_3\"
+    Public sciezka_zrodlo As String = "Y:\OHT\Dana Pomiarowe\"
     Public czy_zapisac_wszystkie_pliki As Boolean = False
 
     Public status_logu As Integer = 1
@@ -54,6 +55,7 @@ Module OHT
         Dim arg_wartosc As String
 
 
+        czy_zapisac_wszystkie_pliki = ConfigurationManager.AppSettings("czy_zapisac_wszystkie_pliki").ToString '.ToLower
 
 
         For Each arg As String In My.Application.CommandLineArgs
@@ -82,9 +84,15 @@ Module OHT
                     zrodlo_meteo = arg_wartosc
                 End If
 
+                If (arg.Substring(1, 2).ToLower = "z:") Then
+                    arg_wartosc = arg.Substring(3, arg.Length - 3)
+                    czy_zapisac_wszystkie_pliki = arg_wartosc
+                End If
+
             End If
         Next
 
+        sciezka_zrodlo = zrodlo_meteo & "_3\"
 
         Dim proces As Process
         proces = System.Diagnostics.Process.GetCurrentProcess
@@ -95,7 +103,8 @@ Module OHT
             nazwa_pliku_log = plik.Name
         End If
 
-        nazwa_pliku_log = zrodlo_meteo & "_" & proces.Id.ToString & "_" & nazwa_pliku_log
+        'nazwa_pliku_log = zrodlo_meteo & "_" & proces.Id.ToString & "_" & nazwa_pliku_log
+        nazwa_pliku_log = zrodlo_meteo & "_" & nazwa_pliku_log
 
         DoLogu("Start")
         DoLogu(Tools.Check_internet)
@@ -170,6 +179,8 @@ Module OHT
         Dim licznik As Integer = 0
         Dim dt As DataTable = Nothing
         Dim nazwaPliku As String = ""
+        Dim status_podczytu As Boolean = False
+        Dim odejmij As Integer = 0
 
         'Dim Directory As New IO.DirectoryInfo(sciezka_zrodlo)
         'Dim allFiles As IO.FileInfo() = Directory.GetFiles("*_Cumulus*.csv")
@@ -211,73 +222,90 @@ Module OHT
             dt = FileToTable(sciezka_zrodlo & "\" & nazwaPliku, ";", False)
 
 
+            'do usu
+            'Dim stat As Boolean
+            'stat = Spr_czy_plik_juz_zapisany(conn, nazwaPliku)
 
-            If Spr_czy_juz_zapisany(conn, nazwaPliku) = False And czy_zapisac_wszystkie_pliki = False Then
 
+            'jezeli czy_zapisac_wszystkie_pliki = true
 
+            If Spr_czy_plik_juz_zapisany(conn, nazwaPliku) = False Then
+                status_podczytu = True
+            End If
 
-                typPrognozy = dt.Rows(0).Item(0).ToString
-                nazwaMeteo = Mid(typPrognozy, 3, Len(typPrognozy))
+            If czy_zapisac_wszystkie_pliki = True Then
+                status_podczytu = True
+            End If
 
-                If nazwaMeteo.ToLower.Contains("cumulus") _
+            If status_podczytu = True Then
+
+                    typPrognozy = dt.Rows(0).Item(0).ToString
+                    nazwaMeteo = Mid(typPrognozy, 3, Len(typPrognozy))
+
+                    If nazwaMeteo.ToLower.Contains("cumulus") _
                     Or nazwaMeteo.ToLower.Contains("conwx") Then
 
-
+                    If zrodlo_meteo.ToLower = "cumulus" Then
+                        odejmij = 1
+                    End If
 
                     Ostatni_W = dt.Rows.Count
-                    Ostatni_K = dt.Columns.Count
+                        Ostatni_K = dt.Columns.Count
 
-                    wersja = typPrognozy.Substring(0, 1)
-                    model = typPrognozy.Substring(2, 7) 'Cumulus
-                    dData = CDate(dt.Rows(1).Item(0))
+                        wersja = typPrognozy.Substring(0, 1)
+                        model = typPrognozy.Substring(2, 7) 'Cumulus
+                        dData = CDate(dt.Rows(1).Item(0))
 
-                    dGodzina = (dt.Rows(0).Item(1))
+                        dGodzina = (dt.Rows(0).Item(1))
 
-                    Dim nazwaProfilu_N As String
-                    Dim nazwaProfilu_N1 As String
-                    Dim nazwaProfilu_N2 As String
-                    Dim nazwaLokalizacji As String = ""
-                    Dim ID_profil_N As Long
-                    Dim ID_profil_N1 As Long
-                    Dim ID_profil_N2 As Long
+                        Dim nazwaProfilu_N As String
+                        Dim nazwaProfilu_N1 As String
+                        Dim nazwaProfilu_N2 As String
+                        Dim nazwaLokalizacji As String = ""
+                        Dim ID_profil_N As Long
+                        Dim ID_profil_N1 As Long
+                        Dim ID_profil_N2 As Long
 
-                    'petla po wierszach lokalizacji
-                    For w = 2 To Ostatni_W - 1
+                        'petla po wierszach lokalizacji
+                        For w = 2 To Ostatni_W - 1
 
-                        '*************************************************************************************************************************
-                        'Do usu
-                        If w = 3 And tryb_testowy = True Then
-                            w = Ostatni_W - 1
-                        End If
+                            '*************************************************************************************************************************
+                            'Do usu
+                            If w = 3 And tryb_testowy = True Then
+                                w = Ostatni_W - 1
+                            End If
 
 
-                        nazwaLokalizacji = (dt.Rows(w).Item(0))
+                            nazwaLokalizacji = (dt.Rows(w).Item(0))
 
-                        nazwaProfilu_N = nazwaLokalizacji & "_" & nazwaMeteo & "_N"
-                        nazwaProfilu_N1 = nazwaLokalizacji & "_" & nazwaMeteo & "_N1"
-                        nazwaProfilu_N2 = nazwaLokalizacji & "_" & nazwaMeteo & "_N2"
+                            nazwaProfilu_N = nazwaLokalizacji & "_" & nazwaMeteo & "_N"
+                            nazwaProfilu_N1 = nazwaLokalizacji & "_" & nazwaMeteo & "_N1"
+                            nazwaProfilu_N2 = nazwaLokalizacji & "_" & nazwaMeteo & "_N2"
 
-                        ID_profil_N = Pobierz_ID_z_Name(conn, nazwaProfilu_N)
-                        If ID_profil_N = 0 Then
-                            DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N)
-                        End If
+                            ID_profil_N = Pobierz_ID_z_Name(conn, nazwaProfilu_N)
+                            If ID_profil_N = 0 Then
+                                DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N)
+                            End If
 
-                        ID_profil_N1 = Pobierz_ID_z_Name(conn, nazwaProfilu_N1)
-                        If ID_profil_N1 = 0 Then
-                            DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N1)
-                        End If
+                            ID_profil_N1 = Pobierz_ID_z_Name(conn, nazwaProfilu_N1)
+                            If ID_profil_N1 = 0 Then
+                                DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N1)
+                            End If
 
-                        ID_profil_N2 = Pobierz_ID_z_Name(conn, nazwaProfilu_N2)
-                        If ID_profil_N2 = 0 Then
-                            DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N2)
-                        End If
+                            ID_profil_N2 = Pobierz_ID_z_Name(conn, nazwaProfilu_N2)
+                            If ID_profil_N2 = 0 Then
+                                DoLogu("Nie znaleziono ID profilu:" & nazwaProfilu_N2)
+                            End If
 
 
                         'petla po kolumnach
-                        For k = 1 To Ostatni_K - 2
-                            dData_temp = dData.AddHours(dGodzina.Hour + k - 1)
 
+
+                        For k = 1 To Ostatni_K - 1 - odejmij
+
+                            dData_temp = dData.AddHours(dGodzina.Hour + k - 2)
                             wartosc_s = (dt.Rows(w).Item(k)).ToString
+
                             wartosc_s = wartosc_s.Replace(".", ",")
                             wartosc = CDbl(wartosc_s)
                             wartosc /= 4
@@ -314,19 +342,19 @@ Module OHT
                         Next
                         DoLogu("Zapisano dane dla lokalizacji: " & nazwaLokalizacji)
 
-                    Next
+                        Next
 
-                End If
+                    End If
 
 
 
-                'dodanie logu do bazy
-                InsertRowHarmonogram_log(conn, "Import_" & zrodlo_meteo, nazwaPliku.ToString)
+                    'dodanie logu do bazy
+                    InsertRowHarmonogram_log(conn, "Import_" & zrodlo_meteo, nazwaPliku.ToString)
 
-                conn.Close()
-                dt.Reset()
-            Else
-                DoLogu("Plik pominięty. Został już wcześniej zapisany.")
+                    conn.Close()
+                    dt.Reset()
+                Else
+                    DoLogu("Plik pominięty. Został już wcześniej zapisany.")
             End If
 
 
@@ -410,13 +438,13 @@ Module OHT
         Return id
     End Function
 
-    Function Spr_czy_juz_zapisany(cn As OracleConnection, nazwa_pliku As String) As Boolean
+    Function Spr_czy_plik_juz_zapisany(cn As OracleConnection, nazwa_pliku As String) As Boolean
         Dim rezult As Boolean = False
         Dim dr As OracleDataReader
         Dim id As Long
         Try
             Using cmd As OracleCommand = New OracleCommand()
-                Dim sql As String = "select id from OZEN.HARMONOGRAM_LOG where lower (INFO) = lower ('" & nazwa_pliku & "') and lower (ZADANIE) = lower ('Import_Cumulus') "
+                Dim sql As String = "select id from OZEN.HARMONOGRAM_LOG where lower (INFO) = lower ('" & nazwa_pliku & "') and lower (ZADANIE) = lower ('Import_" & zrodlo_meteo & "') "
                 cmd.Connection = cn
                 'cmd.Parameters.Add(New OracleParameter("var1", id))
                 'cmd.Parameters.Add(New OracleParameter("var2", data))
@@ -440,6 +468,46 @@ Module OHT
         End Try
         Return rezult
     End Function
+
+
+    Function Spr_czy_dane_sa_juz_zapisane(cn As OracleConnection, data As Date, zrodlo_meteo As String, kod_lokalizacji As String) As Boolean
+        Dim rezult As Boolean = False
+        Dim dr As OracleDataReader
+        Dim id As Long
+        Try
+            Using cmd As OracleCommand = New OracleCommand()
+
+
+                '------------------------------**********************
+                ' do zrobienia
+
+
+                Dim sql As String = "select id from OZEN.HARMONOGRAM_LOG where lower (INFO) = lower ('" & data & "') and lower (ZADANIE) = lower ('Import_Cumulus') "
+
+                cmd.Connection = cn
+                'cmd.Parameters.Add(New OracleParameter("var1", id))
+                'cmd.Parameters.Add(New OracleParameter("var2", data))
+                'cmd.Parameters.Add(New OracleParameter("var3", wartosc))
+                cmd.CommandText = sql
+                cmd.CommandType = CommandType.Text
+                cmd.ExecuteNonQuery()
+                dr = cmd.ExecuteReader()
+                dr.Read()
+
+                If dr.HasRows = True Then
+                    id = dr.Item(0)
+                    rezult = True
+                End If
+                dr.Close()
+
+            End Using
+        Catch err As Exception
+            DoLogu("Błąd pobierania danych do weryfikacji:" & data & ". Błąd numer:" & err.ToString)
+            Return 0
+        End Try
+        Return rezult
+    End Function
+
 
 
     Private Sub InsertRowEnergy15(cn As OracleConnection, id As Long, data As String, wartosc As String)

@@ -18,8 +18,13 @@ Namespace OHT_import_Meteo
         Public Sub WriteToFile(text As String)
             'Dim path As String = "C:\temp\" & DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss").ToString & "_ServiceLog.txt"if 
             'Dim text2 As String = DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss").ToString
-            Dim path As String = "C:\temp\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_Podczyt_Cumulus_log.txt"
+            Dim path As String = "C:\temp\meteo\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_Podczyt_Cumulus_log.txt"
             text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss").ToString & " " & text
+
+            If Directory.Exists("C:\temp\meteo\") = False Then
+                Directory.CreateDirectory("C:\temp\meteo\")
+            End If
+
             Using writer As New StreamWriter(path, True)
                 writer.WriteLine(text)
                 writer.Close()
@@ -42,8 +47,9 @@ Namespace OHT_import_Meteo
 
             If OHT.status_logu >= poziom Then
 
-                Dim path As String = "C:\temp\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_Podczyt_Cumulus_log.txt"
-                text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss").ToString & " " & text
+                Dim path As String = "C:\temp\meteo\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_Podczyt_Cumulus_log.txt"
+                'text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss").ToString & " " & text
+
                 Using writer As New StreamWriter(path, True)
                     writer.WriteLine(text)
                     writer.Close()
@@ -58,18 +64,13 @@ Namespace OHT_import_Meteo
 
         Public Sub WriteToFile3(text As String, nazwa As String, Optional poziom As Integer = 1)
             If OHT.status_logu >= poziom Then
-                Dim path As String = "C:\temp\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_import_" & nazwa & "_log.txt"
+                Dim path As String = "C:\temp\meteo\" + DateTime.Now.ToString("yyyyMMdd").ToString + "_import_" & nazwa & "_log.txt"
                 text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss").ToString & " " & text
                 Using writer As New StreamWriter(path, True)
                     writer.WriteLine(text)
                     writer.Close()
                 End Using
-
-
             End If
-
-
-
         End Sub
 
         'uruchamianie palikacji i wysyłanie znaków klawiszy
@@ -91,6 +92,12 @@ Namespace OHT_import_Meteo
             Get_ConnectionString = ""
             Select Case UCase(baza)
                 Case "ERGH"
+                    Get_ConnectionString = "Data Source=(DESCRIPTION=(ADDRESS_LIST=" _
+                       + "(ADDRESS=(PROTOCOL=TCP)(HOST = SIPHA.energa.loc)(PORT = 1521)))" _
+                       + "(CONNECT_DATA = (Server = DEDICATE)(SERVICE_NAME = SRV_ERGH)));" _
+                       + "User Id=skome;Password=szafran1;"
+
+                Case "ERGH_NEW"
                     Get_ConnectionString = "Data Source=(DESCRIPTION=(ADDRESS_LIST=" _
                        + "(ADDRESS=(PROTOCOL=TCP)(HOST = SIPHA.energa.loc)(PORT = 1521)))" _
                        + "(CONNECT_DATA = (Server = DEDICATE)(SERVICE_NAME = SRV_ERGH)));" _
