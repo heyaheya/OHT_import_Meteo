@@ -7,7 +7,6 @@ Imports System.Configuration
 'Imports System.Data.Sql
 'Imports System.Data.SqlClient
 
-
 '************************************************************************************************************************************************
 '
 'Paramtery wywołania aplikacji
@@ -18,16 +17,12 @@ Imports System.Configuration
 '
 '************************************************************************************************************************************************
 
-
-
 Module OHT
 
     'Public Class Form1
-
     Private Declare Auto Function ShowWindow Lib "user32.dll" (ByVal hWnd As IntPtr, ByVal nCmdShow As Integer) As Boolean
     Private Declare Auto Function GetConsoleWindow Lib "kernel32.dll" () As IntPtr
     Private Const SW_HIDE As Integer = 0
-
 
     Dim Tools As New OHT_import_Meteo.Tools_OHT
 
@@ -49,30 +44,23 @@ Module OHT
 
     Sub Main()
 
-
-
         Dim StatusPodczytu As Boolean = False
         Dim arg_wartosc As String
 
-
         czy_zapisac_wszystkie_pliki = ConfigurationManager.AppSettings("czy_zapisac_wszystkie_pliki").ToString '.ToLower
-
 
         For Each arg As String In My.Application.CommandLineArgs
             If arg.Trim("-") = "v" Then
                 StatusPodczytu = True
             End If
 
-
             If arg.Length > 2 Then
 
                 If (arg.Substring(1, 2) = "p:") Then
-
                     If CInt(arg.Chars(3).ToString) < 3 Then
                         status_logu = CInt(arg.Substring(3, 1))
                     End If
                 End If
-
 
                 If (arg.Substring(1, 2).ToLower = "f:") Then
                     arg_wartosc = arg.Substring(3, arg.Length - 3)
@@ -92,11 +80,20 @@ Module OHT
             End If
         Next
 
+        '/*
+        '2021-12-05 14:14:45 Ilość argumentów wywołania aplikacji:5
+        '2021-12-05 14:14:45 -v
+        '2021-12-05 14:14:45 -p:1
+        '2021-12-05 14:14:45 -f:y:\OHT\Dana Pomiarowe\Cumulus_3\20210818_2_Cumulus_prog_wiatr_sila.csv
+        '2021-12-05 14:14:45 -s:Cumulus
+        '2021-12-05 14:14:45 -z:true
+        '*/
+
+
         sciezka_zrodlo = zrodlo_meteo & "_3\"
 
         Dim proces As Process
         proces = System.Diagnostics.Process.GetCurrentProcess
-
 
         If File.Exists(plik_do_importu) Then
             Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
@@ -115,7 +112,6 @@ Module OHT
 
         Const SW_HIDE As Integer = &H0
 
-
         If StatusPodczytu = True Then
 
             Dim hWndConsole As IntPtr
@@ -125,10 +121,14 @@ Module OHT
             If File.Exists(plik_do_importu) Then
                 Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
 
-
-
                 DoLogu("Zapis_danych_na_baze.")
                 'zapis danych na bazę
+
+                If plik_do_importu="asdas" Then
+                    Dim aaasd As String=1
+                    End If
+
+
                 Zapis_danych_na_baze(plik, zrodlo_meteo)
                 DoLogu("Zakończono import danych.")
 
@@ -307,8 +307,13 @@ Module OHT
                             wartosc_s = (dt.Rows(w).Item(k)).ToString
 
                             wartosc_s = wartosc_s.Replace(".", ",")
-                            wartosc = CDbl(wartosc_s)
-                            wartosc /= 4
+
+                            If wartosc_s = "" Then
+                                wartosc_s = 0
+                            Else
+                                wartosc = CDbl(wartosc_s)
+                                wartosc /= 4
+                            End If
                             wartosc_s = wartosc.ToString
                             wartosc_s = wartosc_s.Replace(",", ".")
 
