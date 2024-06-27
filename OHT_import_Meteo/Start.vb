@@ -2,6 +2,7 @@
 Imports System.Data.OracleClient
 Imports DataTable = System.Data.DataTable
 Imports System.Configuration
+Imports System.Windows.Forms
 
 'Imports System.Data.OleDb
 'Imports System.Data.Sql
@@ -47,6 +48,7 @@ Module OHT
 
         Dim StatusPodczytu As Boolean = False
         Dim arg_wartosc As String
+        Dim katalog_do_podczytu As String = ""
 
         czy_zapisac_wszystkie_pliki = ConfigurationManager.AppSettings("czy_zapisac_wszystkie_pliki").ToString '.ToLower
 
@@ -80,6 +82,12 @@ Module OHT
                 If (arg.Substring(1, 2).ToLower = "z:") Then
                     arg_wartosc = arg.Substring(3, arg.Length - 3)
                     czy_zapisac_wszystkie_pliki = arg_wartosc
+                End If
+
+
+                If (arg.Substring(1, 2).ToLower = "d:") Then
+                    arg_wartosc = arg.Substring(3, arg.Length - 3)
+                    katalog_do_podczytu = arg_wartosc
                 End If
 
             End If
@@ -123,7 +131,14 @@ Module OHT
             hWndConsole = GetConsoleWindow()
             ShowWindow(hWndConsole, SW_HIDE)
 
-            If File.Exists(plik_do_importu) Then
+            'czytanie całęgo katalogu
+            If katalog_do_podczytu <> "" Then
+
+                Podczyt_danych_z_katalogu(katalog_do_podczytu)
+
+                'czytanie pojedynczego pliku
+            Else
+                If File.Exists(plik_do_importu) Then
                 Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
 
                 DoLogu("Plik: " + plik_do_importu.ToString + " został znaleziony.")
@@ -142,6 +157,10 @@ Module OHT
 
             End If
 
+        End If
+
+
+
         Else
 
 
@@ -155,7 +174,39 @@ Module OHT
 
 
 
+    Private Sub Podczyt_danych_z_katalogu(katalog_do_podczytu As String)
+        'pobranie listy plikow z katalogu
+        Dim zrodlo_meteo As String = "ConWX"
+        Dim katalog As String
 
+        For Each plik_do_importu As String In My.Computer.FileSystem.GetFiles(katalog_do_podczytu)
+            DoLogu(plik_do_importu.ToString)
+
+            If File.Exists(plik_do_importu) Then
+                Dim plik = My.Computer.FileSystem.GetFileInfo(plik_do_importu)
+
+                DoLogu("Plik: " + plik_do_importu.ToString + " został znaleziony.", 1)
+                'zapis danych na bazę
+
+                If plik_do_importu = "asdas" Then
+                    Dim aaasd As String = 1
+                End If
+
+
+                Zapis_danych_na_baze(plik, zrodlo_meteo)
+
+                DoLogu("Zakończono import danych z pliku: " & plik_do_importu, 1)
+
+            Else
+                DoLogu("Nie znaleziono pliku: " + plik_do_importu)
+
+            End If
+        Next
+
+
+
+
+    End Sub
 
 
 
@@ -234,8 +285,12 @@ Module OHT
             weryf = nazwaPliku.Substring(10)
 
             If weryf.Contains("15") Then
+                'todo spr warunek na pliku z liczbą 15
                 czy_15 = "_15"
             End If
+
+
+
 
             'do usu
             'Dim stat As Boolean
@@ -250,6 +305,10 @@ Module OHT
 
             If czy_zapisac_wszystkie_pliki = True Then
                 status_podczytu = True
+            End If
+
+            If weryf.Contains("15") And weryf.ToLower.Contains("wyk") And weryf.ToLower.Contains("conwx5") Then
+                status_podczytu = False
             End If
 
             If status_podczytu = True Then
